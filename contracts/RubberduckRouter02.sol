@@ -9,7 +9,7 @@ import './libraries/SafeMath.sol';
 import './interfaces/IERC20.sol';
 import './interfaces/IWETH.sol';
 
-contract RubberduckRouter is IRubberduckRouter02 {
+contract RubberduckRouter02 is IRubberduckRouter02 {
     using SafeMath for uint;
 
     address public immutable override factory;
