@@ -1,6 +1,6 @@
 pragma solidity =0.6.6;
 
-import '@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol';
+import './interfaces/IRubberduckFactory.sol';
 import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
 
 import './interfaces/IRubberduckRouter02.sol';
@@ -39,8 +39,8 @@ contract RubberduckRouter is IRubberduckRouter02 {
         uint256 amountBMin
     ) internal virtual returns (uint256 amountA, uint256 amountB) {
         // create the pair if it doesn't exist yet
-        if (IUniswapV2Factory(factory).getPair(tokenA, tokenB) == address(0)) {
-            IUniswapV2Factory(factory).createPair(tokenA, tokenB);
+        if (IRubberduckFactory(factory).getPair(tokenA, tokenB) == address(0)) {
+            IRubberduckFactory(factory).createPair(tokenA, tokenB);
         }
         (uint256 reserveA, uint256 reserveB) = RubberduckLibrary.getReserves(factory, tokenA, tokenB);
         if (reserveA == 0 && reserveB == 0) {
@@ -83,7 +83,7 @@ contract RubberduckRouter is IRubberduckRouter02 {
         address pair = RubberduckLibrary.pairFor(factory, tokenA, tokenB);
         TransferHelper.safeTransferFrom(tokenA, msg.sender, pair, amountA);
         TransferHelper.safeTransferFrom(tokenB, msg.sender, pair, amountB);
-        liquidity = IUniswapV2Pair(pair).mint(to);
+        liquidity = IRubberduckPair(pair).mint(to);
     }
 
     function addLiquidityETH(
@@ -117,7 +117,7 @@ contract RubberduckRouter is IRubberduckRouter02 {
         TransferHelper.safeTransferFrom(token, msg.sender, pair, amountToken);
         IWETH(WETH).deposit{value: amountETH}();
         assert(IWETH(WETH).transfer(pair, amountETH));
-        liquidity = IUniswapV2Pair(pair).mint(to);
+        liquidity = IRubberduckPair(pair).mint(to);
         // refund dust eth, if any
         if (msg.value > amountETH) TransferHelper.safeTransferETH(msg.sender, msg.value - amountETH);
     }
@@ -133,8 +133,8 @@ contract RubberduckRouter is IRubberduckRouter02 {
         uint256 deadline
     ) public virtual override ensure(deadline) returns (uint256 amountA, uint256 amountB) {
         address pair = RubberduckLibrary.pairFor(factory, tokenA, tokenB);
-        IUniswapV2Pair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
-        (uint256 amount0, uint256 amount1) = IUniswapV2Pair(pair).burn(to);
+        IRubberduckPair(pair).transferFrom(msg.sender, pair, liquidity); // send liquidity to pair
+        (uint256 amount0, uint256 amount1) = IRubberduckPair(pair).burn(to);
         (address token0, ) = RubberduckLibrary.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
         require(amountA >= amountAMin, 'RubberduckRouter: INSUFFICIENT_A_AMOUNT');
@@ -178,7 +178,7 @@ contract RubberduckRouter is IRubberduckRouter02 {
     ) external virtual override returns (uint256 amountA, uint256 amountB) {
         address pair = RubberduckLibrary.pairFor(factory, tokenA, tokenB);
         uint256 value = approveMax ? uint256(-1) : liquidity;
-        IUniswapV2Pair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IRubberduckPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountA, amountB) = removeLiquidity(tokenA, tokenB, liquidity, amountAMin, amountBMin, to, deadline);
     }
 
@@ -196,7 +196,7 @@ contract RubberduckRouter is IRubberduckRouter02 {
     ) external virtual override returns (uint256 amountToken, uint256 amountETH) {
         address pair = RubberduckLibrary.pairFor(factory, token, WETH);
         uint256 value = approveMax ? uint256(-1) : liquidity;
-        IUniswapV2Pair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IRubberduckPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         (amountToken, amountETH) = removeLiquidityETH(token, liquidity, amountTokenMin, amountETHMin, to, deadline);
     }
 
@@ -229,7 +229,7 @@ contract RubberduckRouter is IRubberduckRouter02 {
     ) external virtual override returns (uint256 amountETH) {
         address pair = RubberduckLibrary.pairFor(factory, token, WETH);
         uint256 value = approveMax ? uint256(-1) : liquidity;
-        IUniswapV2Pair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
+        IRubberduckPair(pair).permit(msg.sender, address(this), value, deadline, v, r, s);
         amountETH = removeLiquidityETHSupportingFeeOnTransferTokens(
             token,
             liquidity,
@@ -255,7 +255,7 @@ contract RubberduckRouter is IRubberduckRouter02 {
                 ? (uint256(0), amountOut)
                 : (amountOut, uint256(0));
             address to = i < path.length - 2 ? RubberduckLibrary.pairFor(factory, output, path[i + 2]) : _to;
-            IUniswapV2Pair(RubberduckLibrary.pairFor(factory, input, output)).swap(
+            IRubberduckPair(RubberduckLibrary.pairFor(factory, input, output)).swap(
                 amount0Out,
                 amount1Out,
                 to,
@@ -378,7 +378,7 @@ contract RubberduckRouter is IRubberduckRouter02 {
         for (uint256 i; i < path.length - 1; i++) {
             (address input, address output) = (path[i], path[i + 1]);
             (address token0, ) = RubberduckLibrary.sortTokens(input, output);
-            IUniswapV2Pair pair = IUniswapV2Pair(RubberduckLibrary.pairFor(factory, input, output));
+            IRubberduckPair pair = IRubberduckPair(RubberduckLibrary.pairFor(factory, input, output));
             uint256 amountInput;
             uint256 amountOutput;
             {
